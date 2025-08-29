@@ -2,9 +2,9 @@
 # TODO: do we need hooks? 
 # TODO: do we need all of the variables?
 
-name: azd-get-started-with-ai-agents
+name: citadel-online-researcher-agent
 metadata:
-  template: azd-get-started-with-ai-agents@1.0.1
+  template: citadel-online-researcher-agent@1.0.0
 requiredVersions:
   azd: ">=1.14.0"
 
@@ -43,12 +43,12 @@ hooks:
       continueOnError: true
       interactive: true
 services:
-  api_and_frontend:
+  agent-api:
     project: ./src
     language: py
     host: containerapp
     docker:
-      image: api_and_frontend
+      image: agent-api
       remoteBuild: true
 pipeline:
   variables:

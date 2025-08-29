@@ -1,6 +1,6 @@
-# Getting Started with Agents Using Azure AI Foundry
+# Citadel Online Researcher Agent
 
-The agent leverages the Azure AI Agent service and utilizes file search for knowledge retrieval from uploaded files, enabling it to generate responses with citations. The solution also includes built-in monitoring capabilities with tracing to ensure easier troubleshooting and optimized performance.
+An intelligent AI agent leveraging Azure AI Foundry that provides advanced research capabilities with web search, file-based knowledge retrieval, and comprehensive monitoring. This is the backend service that powers AI-driven research and conversation experiences.
 
 <div style="text-align:center;">
 
@@ -10,7 +10,7 @@ The agent leverages the Azure AI Agent service and utilizes file search for know
 
 ## Solution Overview
 
-This solution deploys a web-based chat application with an AI agent running in Azure Container App.
+This solution deploys a Python FastAPI backend service with an AI agent running in Azure Container App.
 
 The agent leverages the Azure AI Agent service and utilizes Azure AI Search for knowledge retrieval from uploaded files, enabling it to generate responses with citations. The solution also includes built-in monitoring capabilities with tracing to ensure easier troubleshooting and optimized performance.
 
@@ -49,7 +49,20 @@ Facilitates the creation of an AI Red Teaming Agent that can run batch automated
 
 <br/>
 
-Here is a screenshot showing the chatting web application with requests and responses between the system and the user:
+## Frontend Integration
+
+This backend agent is designed to work with chat applications that can consume its REST API endpoints. 
+
+For a ready-to-use React TypeScript frontend, see the companion repository:
+- **[Citadel Chat App](../chat-app)** - Modern React chat interface with real-time streaming
+
+The agent provides the following API endpoints:
+- `GET /agent` - Get agent configuration and metadata
+- `GET /chat/history` - Retrieve conversation history
+- `POST /chat` - Send messages and receive streaming responses
+- `GET /health` - Health check endpoint
+
+Here is a screenshot showing a sample chatting web application powered by this agent:
 
 ![Screenshot of chatting web application showing requests and responses between agent and the user.](docs/images/webapp_screenshot.png)
 
