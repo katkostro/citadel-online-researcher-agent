@@ -81,11 +81,33 @@ async def lifespan(app: FastAPI):
 # Create FastAPI app
 app = FastAPI(lifespan=lifespan)
 
+# Add CORS middleware to allow frontend to communicate with backend
+from fastapi.middleware.cors import CORSMiddleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://delightful-smoke-05a0e9c0f.1.azurestaticapps.net",
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:8080"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Authentication dependency placeholder 
 auth_dependency = None
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="api/static", html=True), name="static")
+
+@app.get("/favicon.ico")
+async def favicon():
+    """Favicon endpoint to prevent 404 errors"""
+    from fastapi.responses import Response
+    # Return empty response to prevent 404 errors in browser
+    return Response(content="", media_type="image/x-icon")
 
 @app.get("/health")
 async def health():
