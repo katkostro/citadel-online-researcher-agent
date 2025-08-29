@@ -11,6 +11,7 @@ import fastapi
 from fastapi.staticfiles import StaticFiles
 from fastapi import Request
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
 from logging_config import configure_logging
@@ -116,6 +117,21 @@ def create_app():
 
     directory = os.path.join(os.path.dirname(__file__), "static")
     app = fastapi.FastAPI(lifespan=lifespan)
+    
+    # Add CORS middleware to allow frontend to communicate with backend
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            "https://delightful-smoke-05a0e9c0f.1.azurestaticapps.net",
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "http://localhost:8080"
+        ],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    
     app.mount("/static", StaticFiles(directory=directory), name="static")
     
     # Mount React static files
