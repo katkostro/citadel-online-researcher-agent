@@ -104,7 +104,7 @@ module app 'core/host/container-app-upsert.bicep' = {
   params: {
     name: name
     location: location
-    tags: union(tags, { 'azd-service-name': 'api_and_frontend' })
+    tags: union(tags, { 'azd-service-name': 'agent-api' })
     identityName: apiIdentity.name
     containerRegistryName: containerRegistryName
     containerAppsEnvironmentName: containerAppsEnvironmentName
