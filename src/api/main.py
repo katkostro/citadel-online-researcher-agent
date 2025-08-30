@@ -121,12 +121,7 @@ def create_app():
     # Add CORS middleware to allow frontend to communicate with backend
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            "https://delightful-smoke-05a0e9c0f.1.azurestaticapps.net",
-            "http://localhost:3000",
-            "http://localhost:5173",
-            "http://localhost:8080"
-        ],
+        allow_origins=["*"],  # Allow all origins for deployment flexibility
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

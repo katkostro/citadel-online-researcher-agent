@@ -261,6 +261,68 @@ azd down --force --purge
 - Environment variables configured in Container App settings
 - CORS middleware handles cross-origin requests
 
+## Part 8: Production Security Configuration
+
+### CORS Origins Restriction
+
+⚠️ **IMPORTANT**: For production deployments, you should restrict CORS origins to specific frontend URLs for security.
+
+**Current Development Configuration** (in both `src/main_sk.py` and `src/api/main.py`):
+```python
+allow_origins=["*"],  # Allow all origins - NOT SECURE for production
+```
+
+**Recommended Production Configuration**:
+```python
+allow_origins=[
+    "https://your-frontend-domain.azurestaticapps.net",  # Your actual frontend URL
+    "https://your-custom-domain.com",  # Any custom domain
+    # Add localhost only if needed for local development
+    "http://localhost:3000",
+    "http://localhost:5173",
+],
+```
+
+**Steps to Secure CORS for Production:**
+
+1. **Get your frontend URL** after deployment:
+   ```bash
+   cd chat-app
+   azd env get-value SERVICE_WEB_URI
+   ```
+
+2. **Update backend CORS configuration**:
+   ```bash
+   cd ../citadel-online-researcher-agent
+   ```
+   
+   Edit both files:
+   - `src/main_sk.py` (lines ~87-89)
+   - `src/api/main.py` (lines ~123-125)
+   
+   Replace:
+   ```python
+   allow_origins=["*"],
+   ```
+   
+   With:
+   ```python
+   allow_origins=[
+       "https://your-actual-frontend-url.azurestaticapps.net",
+       # Add any custom domains here
+   ],
+   ```
+
+3. **Redeploy backend**:
+   ```bash
+   azd up
+   ```
+
+**Why This Matters:**
+- `allow_origins=["*"]` allows ANY website to call your backend API
+- Restricting origins prevents unauthorized websites from using your API
+- Reduces risk of CSRF attacks and unauthorized access
+
 ## Summary
 
 1. **Deploy Backend**: Run `azd up` in `citadel-online-researcher-agent` directory
@@ -268,5 +330,6 @@ azd down --force --purge
 3. **Configure Frontend**: Set `VITE_API_BASE_URL` in chat-app `.env` file
 4. **Deploy Frontend**: Set environment variable, build, and run `azd up` in `chat-app` directory
 5. **Test**: Verify frontend can communicate with backend via browser developer tools
+6. **Secure CORS**: Replace `allow_origins=["*"]` with specific frontend URLs for production
 
 The key to success is ensuring the frontend's `VITE_API_BASE_URL` environment variable points to the correct deployed backend URL, and that this variable is set during the build process.

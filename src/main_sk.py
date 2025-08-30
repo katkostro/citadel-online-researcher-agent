@@ -85,12 +85,7 @@ app = FastAPI(lifespan=lifespan)
 from fastapi.middleware.cors import CORSMiddleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://delightful-smoke-05a0e9c0f.1.azurestaticapps.net",
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://localhost:8080"
-    ],
+    allow_origins=["*"],  # Allow all origins for now - should be restricted in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
