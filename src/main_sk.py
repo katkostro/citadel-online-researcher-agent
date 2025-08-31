@@ -396,6 +396,197 @@ async def chat_stream(request: Message, _ = auth_dependency):
             content={"error": "Failed to process chat request"}
         )
 
+def format_bing_grounding_response(content, annotations=None):
+    """Format the response to match the required JSON structure with annotations."""
+    # If content is already the complete message object with text and annotations
+    if hasattr(content, 'text') and hasattr(content.text, 'value') and hasattr(content.text, 'annotations'):
+        return {
+            "response": {
+                "type": "text", 
+                "text": {
+                    "value": content.text.value,
+                    "annotations": [
+                        {
+                            "type": annotation.type if hasattr(annotation, 'type') else "url_citation",
+                            "text": annotation.text if hasattr(annotation, 'text') else "",
+                            "start_index": annotation.start_index if hasattr(annotation, 'start_index') else 0,
+                            "end_index": annotation.end_index if hasattr(annotation, 'end_index') else 0,
+                            "url_citation": {
+                                "url": annotation.url_citation.url if hasattr(annotation, 'url_citation') and hasattr(annotation.url_citation, 'url') else "",
+                                "title": annotation.url_citation.title if hasattr(annotation, 'url_citation') and hasattr(annotation.url_citation, 'title') else ""
+                            } if hasattr(annotation, 'url_citation') else {}
+                        } for annotation in content.text.annotations
+                    ]
+                }
+            }
+        }
+    
+    # Handle the case where content and annotations are passed separately
+    if annotations is not None:
+        formatted_annotations = []
+        for annotation in annotations:
+            # Handle different annotation formats
+            if isinstance(annotation, dict):
+                formatted_annotations.append({
+                    "type": annotation.get("type", "url_citation"),
+                    "text": annotation.get("text", ""),
+                    "start_index": annotation.get("start_index", 0),
+                    "end_index": annotation.get("end_index", 0),
+                    "url_citation": annotation.get("url_citation", {})
+                })
+            else:
+                # Handle object-based annotations
+                formatted_annotations.append({
+                    "type": getattr(annotation, 'type', "url_citation"),
+                    "text": getattr(annotation, 'text', ""),
+                    "start_index": getattr(annotation, 'start_index', 0),
+                    "end_index": getattr(annotation, 'end_index', 0),
+                    "url_citation": {
+                        "url": getattr(getattr(annotation, 'url_citation', None), 'url', "") if hasattr(annotation, 'url_citation') else "",
+                        "title": getattr(getattr(annotation, 'url_citation', None), 'title', "") if hasattr(annotation, 'url_citation') else ""
+                    } if hasattr(annotation, 'url_citation') else {}
+                })
+        
+        return {
+            "response": {
+                "type": "text",
+                "text": {
+                    "value": str(content),
+                    "annotations": formatted_annotations
+                }
+            }
+        }
+    
+    # Fallback for simple content
+    if hasattr(content, 'value'):
+        text_value = content.value
+    else:
+        text_value = str(content)
+    
+    return {
+        "response": {
+            "type": "text",
+            "text": {
+                "value": text_value,
+                "annotations": []
+            }
+        }
+    }
+
+@app.post("/search")
+async def search_endpoint(request: Message, _ = auth_dependency):
+    """
+    Search endpoint that returns Bing grounding responses in standardized JSON format.
+    """
+    global agent, ai_project_client
+    
+    logger.info(f"search: Received search request: {request.message}")
+    
+    if not agent or not ai_project_client:
+        logger.error("search: Agent or AI project client not available")
+        error_response = format_bing_grounding_response("Search service not available")
+        return JSONResponse(
+            status_code=503,
+            content=error_response
+        )
+    
+    try:
+        # Use direct Azure AI Projects API like the reference implementation
+        logger.info("search: Creating thread and run for search request")
+        
+        # Create thread and run in one step
+        run_result = ai_project_client.agents.create_thread_and_run(
+            agent_id=agent.id,
+            thread={
+                "messages": [
+                    {
+                        "role": "user", 
+                        "content": f"""Please search for: {request.message}
+
+Use your Bing search tool to find current information and provide a comprehensive answer with proper citations."""
+                    }
+                ]
+            }
+        )
+        
+        # Wait for completion
+        import time
+        max_wait_time = 30
+        wait_interval = 1
+        elapsed_time = 0
+        
+        while elapsed_time < max_wait_time:
+            try:
+                current_run = ai_project_client.agents.runs.get(
+                    thread_id=run_result.thread_id, 
+                    run_id=run_result.id
+                )
+                logger.info(f"search: Run status: {current_run.status}")
+                
+                if current_run.status in ["completed", "failed", "expired", "cancelled"]:
+                    if current_run.status == "failed":
+                        logger.error(f"search: Run failed: {getattr(current_run, 'last_error', 'Unknown error')}")
+                    break
+                    
+                time.sleep(wait_interval)
+                elapsed_time += wait_interval
+                
+            except Exception as status_error:
+                logger.warning(f"search: Error checking run status: {status_error}")
+                break
+        
+        # Get the complete message with annotations
+        try:
+            messages = ai_project_client.agents.messages.list(thread_id=run_result.thread_id)
+            messages_list = list(messages)
+            
+            # Find the last assistant message
+            for message in messages_list:
+                if message.role == "assistant" and message.content:
+                    for content_item in message.content:
+                        if hasattr(content_item, 'text') and content_item.text:
+                            # Debug logging to understand the structure
+                            logger.info(f"search: Content item type: {type(content_item)}")
+                            logger.info(f"search: Text type: {type(content_item.text)}")
+                            logger.info(f"search: Has annotations: {hasattr(content_item.text, 'annotations')}")
+                            if hasattr(content_item.text, 'annotations'):
+                                logger.info(f"search: Annotations count: {len(content_item.text.annotations)}")
+                                logger.info(f"search: Annotations: {content_item.text.annotations}")
+                            
+                            # Try to convert to dict to see the full structure
+                            try:
+                                if hasattr(content_item, 'model_dump'):
+                                    content_dict = content_item.model_dump()
+                                    logger.info(f"search: Content dict: {content_dict}")
+                                elif hasattr(content_item, '__dict__'):
+                                    logger.info(f"search: Content dict: {content_item.__dict__}")
+                            except Exception as dict_error:
+                                logger.info(f"search: Could not convert to dict: {dict_error}")
+                            
+                            # Return the complete message object to preserve annotations
+                            logger.info(f"search: Found message with {len(getattr(content_item.text, 'annotations', []))} annotations")
+                            return JSONResponse(content={"response": content_item})
+            
+            # No assistant message found
+            error_response = format_bing_grounding_response("No search results available")
+            return JSONResponse(content=error_response)
+            
+        except Exception as msg_error:
+            logger.error(f"search: Error retrieving messages: {msg_error}")
+            error_response = format_bing_grounding_response("Error retrieving search results")
+            return JSONResponse(
+                status_code=500,
+                content=error_response
+            )
+            
+    except Exception as e:
+        logger.error(f"search: Error processing search request: {e}")
+        error_response = format_bing_grounding_response("An error occurred while processing your search request.")
+        return JSONResponse(
+            status_code=500,
+            content=error_response
+        )
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
