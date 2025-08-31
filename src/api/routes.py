@@ -501,3 +501,88 @@ async def get_azure_config(_ = auth_dependency):
     except Exception as e:
         logger.error(f"Error getting Azure config: {e}")
         raise HTTPException(status_code=500, detail="Failed to get Azure configuration")
+
+@router.post("/search")
+async def search(
+    request: Request,
+    agent: Agent = Depends(get_agent),
+    ai_project: AIProjectClient = Depends(get_ai_project)
+):
+    """Search endpoint with standardized response format."""
+    try:
+        request_data = await request.json()
+        query = request_data.get('query', '').strip()
+        
+        if not query:
+            return JSONResponse({
+                "response": {
+                    "type": "text",
+                    "text": {
+                        "value": "Error: Query parameter is required",
+                        "annotations": []
+                    }
+                }
+            }, status_code=400)
+        
+        agent_client = ai_project.agents
+        thread = await agent_client.threads.create()
+        
+        await agent_client.messages.create(
+            thread_id=thread.id,
+            role="user", 
+            content=query
+        )
+        
+        run = await agent_client.runs.create_and_process(
+            thread_id=thread.id,
+            agent_id=agent.id
+        )
+        
+        if run.status == "failed":
+            return JSONResponse({
+                "response": {
+                    "type": "text",
+                    "text": {
+                        "value": "Search failed",
+                        "annotations": []
+                    }
+                }
+            }, status_code=500)
+        
+        messages = await agent_client.messages.list(thread_id=thread.id)
+        content_text = "Search completed"
+        annotations = []
+        
+        async for message in messages:
+            if message.role == "assistant":
+                for content_item in message.content:
+                    if hasattr(content_item, 'text') and content_item.text:
+                        content_text = content_item.text.value or content_text
+                break
+        
+        try:
+            await agent_client.threads.delete(thread.id)
+        except:
+            pass
+        
+        return JSONResponse({
+            "response": {
+                "type": "text",
+                "text": {
+                    "value": content_text,
+                    "annotations": annotations
+                }
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Search error: {e}")
+        return JSONResponse({
+            "response": {
+                "type": "text",
+                "text": {
+                    "value": f"Error: {str(e)}",
+                    "annotations": []
+                }
+            }
+        }, status_code=500)
