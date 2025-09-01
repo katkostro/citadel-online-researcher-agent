@@ -7,9 +7,10 @@ import os
 from typing import Dict, List, Optional, Any
 import aiohttp
 import asyncio
-from azure.cognitiveservices.search.websearch import WebSearchClient
-from azure.cognitiveservices.search.websearch.models import SafeSearch
-from msrest.authentication import CognitiveServicesCredentials
+# Removed azure.cognitiveservices imports that were causing import errors
+# from azure.cognitiveservices.search.websearch import WebSearchClient
+# from azure.cognitiveservices.search.websearch.models import SafeSearch
+# from msrest.authentication import CognitiveServicesCredentials
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,9 @@ class BingGroundingTool:
         self.subscription_key = subscription_key
         self.endpoint = endpoint.rstrip('/')
         logger.info("BingGroundingTool initialized with Bing.Grounding resource - may have limited API access")
-        self.client = WebSearchClient(endpoint=endpoint, credentials=CognitiveServicesCredentials(subscription_key))
+        # Commented out due to missing dependency - our search endpoint uses Azure AI Agents instead
+        # self.client = WebSearchClient(endpoint=endpoint, credentials=CognitiveServicesCredentials(subscription_key))
+        self.client = None  # Placeholder
 
     async def search_web_async(self, query: str, count: int = 5, market: str = "en-US") -> List[Dict[str, Any]]:
         """
