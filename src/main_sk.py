@@ -5,6 +5,7 @@ import asyncio
 import logging
 import os
 import contextlib
+import re
 from typing import AsyncGenerator, Dict, Optional
 
 import fastapi
@@ -192,9 +193,6 @@ async def stream_agent_response(user_message: str, thread_id: str = None) -> Asy
                 external_info_keywords = ["weather", "temperature", "forecast", "news", "current", "today", "now", "latest", "recent", "stock", "price", "market"]
                 is_external_query = any(keyword in user_message.lower() for keyword in external_info_keywords)
                 
-                logger.info(f"sk: Query analysis - External keywords found: {[k for k in external_info_keywords if k in user_message.lower()]}")
-                logger.info(f"sk: Is external query: {is_external_query}")
-                
                 if not is_external_query:
                     # Use semantic kernel for internal knowledge 
                     logger.info("sk: Searching internal knowledge for product/policy query")
@@ -262,10 +260,10 @@ IMPORTANT: Use the Bing search tool to get current, real-time information for th
                             thread_id=run_result.thread_id, 
                             run_id=run_result.id
                         )
-                        logger.info(f"sk: Run status: {current_run.status}")
                         
                         if current_run.status in ["completed", "failed", "expired", "cancelled"]:
-                            logger.info(f"sk: Run finished with status: {current_run.status}")
+                            if current_run.status == "failed":
+                                logger.error(f"sk: Run failed: {getattr(current_run, 'last_error', 'Unknown error')}")
                             break
                             
                         time.sleep(wait_interval)
@@ -292,16 +290,11 @@ IMPORTANT: Use the Bing search tool to get current, real-time information for th
                     
                     # Extract the latest assistant message
                     if messages_list:
-                        logger.info(f"sk: Processing {len(messages_list)} messages")
                         for i, message in enumerate(messages_list):
-                            logger.info(f"sk: Message {i}: role={getattr(message, 'role', 'unknown')}")
                             if message.role == "assistant" and message.content:
-                                logger.info(f"sk: Found assistant message with {len(message.content)} content items")
                                 for j, content_item in enumerate(message.content):
-                                    logger.info(f"sk: Content item {j}: type={type(content_item)}")
                                     if hasattr(content_item, 'text') and content_item.text:
                                         agent_response = content_item.text.value
-                                        logger.info(f"sk: Extracted response: {len(agent_response)} chars")
                                         break
                                 if agent_response:
                                     break
@@ -357,9 +350,7 @@ What outdoor gear or camping questions can I help you with?"""
         final_response = "\n\n".join(responses) if responses else "I apologize, but I'm unable to process your request at the moment."
         
         # Send the complete response at once (no character-by-character streaming)
-        logger.info(f"sk: Sending complete response: {len(final_response)} characters")
         yield serialize_sse_event({'content': final_response, 'annotations': [], 'type': "completed_message"})
-        logger.info("sk: Sending stream_end event")
         yield serialize_sse_event({'type': "stream_end"})
         
     except Exception as e:
@@ -396,19 +387,43 @@ async def chat_stream(request: Message, _ = auth_dependency):
             content={"error": "Failed to process chat request"}
         )
 
+def format_unicode_citations(text):
+    """
+    Convert corrupted Unicode citations to proper format.
+    Converts: ã3:0â sourceã → 【3:0†source】
+    """
+    if not text:
+        return text
+    
+    # Pattern to match corrupted citations: ã3:0â sourceã
+    corrupted_pattern = r'ã(\d+):(\d+)â sourceã'
+    
+    # Log if citations are being formatted (less verbose)
+    matches = list(re.finditer(corrupted_pattern, text))
+    if matches:
+        logger.info(f"format_unicode_citations: Formatting {len(matches)} Unicode citations")
+    
+    # Replace with proper Unicode format: 【3:0†source】
+    formatted_text = re.sub(corrupted_pattern, r'【\1:\2†source】', text)
+    
+    return formatted_text
+
 def format_bing_grounding_response(content, annotations=None):
     """Format the response to match the required JSON structure with annotations."""
     # If content is already the complete message object with text and annotations
     if hasattr(content, 'text') and hasattr(content.text, 'value') and hasattr(content.text, 'annotations'):
+        # Format Unicode citations in the text value
+        formatted_text_value = format_unicode_citations(content.text.value)
+        
         return {
             "response": {
                 "type": "text", 
                 "text": {
-                    "value": content.text.value,
+                    "value": formatted_text_value,
                     "annotations": [
                         {
                             "type": annotation.type if hasattr(annotation, 'type') else "url_citation",
-                            "text": annotation.text if hasattr(annotation, 'text') else "",
+                            "text": format_unicode_citations(annotation.text) if hasattr(annotation, 'text') else "",
                             "start_index": annotation.start_index if hasattr(annotation, 'start_index') else 0,
                             "end_index": annotation.end_index if hasattr(annotation, 'end_index') else 0,
                             "url_citation": {
@@ -429,7 +444,7 @@ def format_bing_grounding_response(content, annotations=None):
             if isinstance(annotation, dict):
                 formatted_annotations.append({
                     "type": annotation.get("type", "url_citation"),
-                    "text": annotation.get("text", ""),
+                    "text": format_unicode_citations(annotation.get("text", "")),
                     "start_index": annotation.get("start_index", 0),
                     "end_index": annotation.get("end_index", 0),
                     "url_citation": annotation.get("url_citation", {})
@@ -438,7 +453,7 @@ def format_bing_grounding_response(content, annotations=None):
                 # Handle object-based annotations
                 formatted_annotations.append({
                     "type": getattr(annotation, 'type', "url_citation"),
-                    "text": getattr(annotation, 'text', ""),
+                    "text": format_unicode_citations(getattr(annotation, 'text', "")),
                     "start_index": getattr(annotation, 'start_index', 0),
                     "end_index": getattr(annotation, 'end_index', 0),
                     "url_citation": {
@@ -451,7 +466,7 @@ def format_bing_grounding_response(content, annotations=None):
             "response": {
                 "type": "text",
                 "text": {
-                    "value": str(content),
+                    "value": format_unicode_citations(str(content)),
                     "annotations": formatted_annotations
                 }
             }
@@ -459,9 +474,9 @@ def format_bing_grounding_response(content, annotations=None):
     
     # Fallback for simple content
     if hasattr(content, 'value'):
-        text_value = content.value
+        text_value = format_unicode_citations(content.value)
     else:
-        text_value = str(content)
+        text_value = format_unicode_citations(str(content))
     
     return {
         "response": {
@@ -487,7 +502,8 @@ async def search_endpoint(request: Message, _ = auth_dependency):
         error_response = format_bing_grounding_response("Search service not available")
         return JSONResponse(
             status_code=503,
-            content=error_response
+            content=error_response,
+            headers={"Content-Type": "application/json; charset=utf-8"}
         )
     
     try:
@@ -539,44 +555,37 @@ Use your Bing search tool to find current information and provide a comprehensiv
         try:
             messages = ai_project_client.agents.messages.list(thread_id=run_result.thread_id)
             messages_list = list(messages)
+            logger.info(f"search: Retrieved {len(messages_list)} messages from thread")
             
             # Find the last assistant message
             for message in messages_list:
                 if message.role == "assistant" and message.content:
+                    logger.info(f"search: Found assistant message with {len(message.content)} content items")
                     for content_item in message.content:
                         if hasattr(content_item, 'text') and content_item.text:
-                            # Debug logging to understand the structure
-                            logger.info(f"search: Content item type: {type(content_item)}")
-                            logger.info(f"search: Text type: {type(content_item.text)}")
-                            logger.info(f"search: Has annotations: {hasattr(content_item.text, 'annotations')}")
-                            if hasattr(content_item.text, 'annotations'):
-                                logger.info(f"search: Annotations count: {len(content_item.text.annotations)}")
-                                logger.info(f"search: Annotations: {content_item.text.annotations}")
-                            
-                            # Try to convert to dict to see the full structure
-                            try:
-                                if hasattr(content_item, 'model_dump'):
-                                    content_dict = content_item.model_dump()
-                                    logger.info(f"search: Content dict: {content_dict}")
-                                elif hasattr(content_item, '__dict__'):
-                                    logger.info(f"search: Content dict: {content_item.__dict__}")
-                            except Exception as dict_error:
-                                logger.info(f"search: Could not convert to dict: {dict_error}")
-                            
-                            # Return the complete message object to preserve annotations
-                            logger.info(f"search: Found message with {len(getattr(content_item.text, 'annotations', []))} annotations")
-                            return JSONResponse(content={"response": content_item})
+                            # Format the response using the existing function that worked before
+                            formatted_response = format_bing_grounding_response(content_item)
+                            logger.info(f"search: ✅ Successfully formatted response with {len(formatted_response.get('response', {}).get('text', {}).get('annotations', []))} annotations")
+                            return JSONResponse(
+                                content=formatted_response,
+                                headers={"Content-Type": "application/json; charset=utf-8"}
+                            )
             
             # No assistant message found
+            logger.warning("search: No assistant message found in thread")
             error_response = format_bing_grounding_response("No search results available")
-            return JSONResponse(content=error_response)
+            return JSONResponse(
+                content=error_response,
+                headers={"Content-Type": "application/json; charset=utf-8"}
+            )
             
         except Exception as msg_error:
             logger.error(f"search: Error retrieving messages: {msg_error}")
             error_response = format_bing_grounding_response("Error retrieving search results")
             return JSONResponse(
                 status_code=500,
-                content=error_response
+                content=error_response,
+                headers={"Content-Type": "application/json; charset=utf-8"}
             )
             
     except Exception as e:
@@ -584,7 +593,8 @@ Use your Bing search tool to find current information and provide a comprehensiv
         error_response = format_bing_grounding_response("An error occurred while processing your search request.")
         return JSONResponse(
             status_code=500,
-            content=error_response
+            content=error_response,
+            headers={"Content-Type": "application/json; charset=utf-8"}
         )
 
 if __name__ == "__main__":

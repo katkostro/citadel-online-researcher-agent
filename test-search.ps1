@@ -5,7 +5,7 @@ Write-Host "Testing /search endpoint..." -ForegroundColor Green
 
 try {
     $Body = @{
-        query = "What is the weather in NYC today?"
+        message = "What is the weather in NYC today?"
     } | ConvertTo-Json
 
     $Headers = @{
