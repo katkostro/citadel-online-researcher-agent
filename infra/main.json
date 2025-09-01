@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.36.177.2456",
-      "templateHash": "2251112834898660416"
+      "templateHash": "2385391349776819717"
     }
   },
   "parameters": {
@@ -180,59 +180,6 @@
         "description": "Capacity of the chat deployment"
       }
     },
-    "embedModelFormat": {
-      "type": "string",
-      "defaultValue": "OpenAI",
-      "allowedValues": [
-        "Microsoft",
-        "OpenAI"
-      ],
-      "metadata": {
-        "description": "Format of the embedding model to deploy"
-      }
-    },
-    "embedModelName": {
-      "type": "string",
-      "defaultValue": "text-embedding-3-small",
-      "metadata": {
-        "description": "Name of the embedding model to deploy"
-      }
-    },
-    "embeddingDeploymentName": {
-      "type": "string",
-      "defaultValue": "text-embedding-3-small",
-      "metadata": {
-        "description": "Name of the embedding model deployment"
-      }
-    },
-    "embeddingDeploymentDimensions": {
-      "type": "string",
-      "defaultValue": "100",
-      "metadata": {
-        "description": "Embedding model dimensionality"
-      }
-    },
-    "embedModelVersion": {
-      "type": "string",
-      "defaultValue": "1",
-      "metadata": {
-        "description": "Version of the embedding model to deploy"
-      }
-    },
-    "embedDeploymentSku": {
-      "type": "string",
-      "defaultValue": "Standard",
-      "metadata": {
-        "description": "Sku of the embeddings model deployment"
-      }
-    },
-    "embedDeploymentCapacity": {
-      "type": "int",
-      "defaultValue": 30,
-      "metadata": {
-        "description": "Capacity of the embedding deployment"
-      }
-    },
     "useApplicationInsights": {
       "type": "bool",
       "defaultValue": true
@@ -267,20 +214,6 @@
       "defaultValue": "[newGuid()]",
       "metadata": {
         "description": "Random seed to be used during generation of new resources suffixes."
-      }
-    },
-    "enableBingSearch": {
-      "type": "bool",
-      "defaultValue": true,
-      "metadata": {
-        "description": "Enable Bing Search connection for web search capabilities"
-      }
-    },
-    "bingConnectionName": {
-      "type": "string",
-      "defaultValue": "bing-search-connection",
-      "metadata": {
-        "description": "The Bing Search connection name. If omitted will use a default value"
       }
     }
   },
@@ -443,21 +376,7 @@
         }
       }
     ],
-    "aiEmbeddingModel": [
-      {
-        "name": "[parameters('embeddingDeploymentName')]",
-        "model": {
-          "format": "[parameters('embedModelFormat')]",
-          "name": "[parameters('embedModelName')]",
-          "version": "[parameters('embedModelVersion')]"
-        },
-        "sku": {
-          "name": "[parameters('embedDeploymentSku')]",
-          "capacity": "[parameters('embedDeploymentCapacity')]"
-        }
-      }
-    ],
-    "aiDeployments": "[concat(variables('aiChatModel'), if(parameters('useSearchService'), variables('aiEmbeddingModel'), createArray()))]",
+    "aiDeployments": "[variables('aiChatModel')]",
     "logAnalyticsWorkspaceResolvedName": "[if(not(parameters('useApplicationInsights')), '', if(not(empty(parameters('logAnalyticsWorkspaceName'))), parameters('logAnalyticsWorkspaceName'), format('{0}{1}', variables('abbrs').operationalInsightsWorkspaces, variables('resourceToken'))))]",
     "resolvedSearchServiceName": "[if(not(parameters('useSearchService')), '', if(not(empty(parameters('searchServiceName'))), parameters('searchServiceName'), format('{0}{1}', variables('abbrs').searchSearchServices, variables('resourceToken'))))]",
     "existingProjEndpoint": "[if(not(empty(parameters('azureExistingAIProjectResourceId'))), format('https://{0}.services.ai.azure.com/api/projects/{1}', split(parameters('azureExistingAIProjectResourceId'), '/')[8], split(parameters('azureExistingAIProjectResourceId'), '/')[10]), '')]",
@@ -470,6 +389,91 @@
       "name": "[if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))]",
       "location": "[parameters('location')]",
       "tags": "[variables('tags')]"
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "bing-search",
+      "resourceGroup": "[if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[format('bing-{0}', variables('resourceToken'))]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.36.177.2456",
+              "templateHash": "2137883967745781808"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the Bing Search resource"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Tags to apply to the resource"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Bing/accounts",
+              "apiVersion": "2020-06-10",
+              "name": "[parameters('name')]",
+              "location": "global",
+              "tags": "[parameters('tags')]",
+              "kind": "Bing.Grounding",
+              "sku": {
+                "name": "G1"
+              }
+            }
+          ],
+          "outputs": {
+            "endpoint": {
+              "type": "string",
+              "metadata": {
+                "description": "The endpoint for the Bing Search resource"
+              },
+              "value": "https://api.bing.microsoft.com/"
+            },
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "The name of the Bing Search resource"
+              },
+              "value": "[parameters('name')]"
+            },
+            "resourceId": {
+              "type": "string",
+              "metadata": {
+                "description": "The resource ID of the Bing Search resource"
+              },
+              "value": "[resourceId('Microsoft.Bing/accounts', parameters('name'))]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName'))))]"
+      ]
     },
     {
       "condition": "[empty(parameters('azureExistingAIProjectResourceId'))]",
@@ -509,11 +513,13 @@
             "value": "aoai-connection"
           },
           "enableBingSearch": {
-            "value": "[parameters('enableBingSearch')]"
+            "value": true
           },
-          "bingSearchResourceId": "[if(parameters('enableBingSearch'), createObject('value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))), 'Microsoft.Resources/deployments', 'bing-search'), '2022-09-01').outputs.resourceId.value), createObject('value', ''))]",
+          "bingSearchResourceId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))), 'Microsoft.Resources/deployments', 'bing-search'), '2022-09-01').outputs.resourceId.value]"
+          },
           "bingConnectionName": {
-            "value": "[parameters('bingConnectionName')]"
+            "value": "bing-search-connection"
           }
         },
         "template": {
@@ -523,7 +529,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.36.177.2456",
-              "templateHash": "12866460994632891167"
+              "templateHash": "7631011574924515493"
             }
           },
           "parameters": {
@@ -2402,7 +2408,7 @@
                     "_generator": {
                       "name": "bicep",
                       "version": "0.36.177.2456",
-                      "templateHash": "13679908702936559652"
+                      "templateHash": "12493798220159744512"
                     },
                     "description": "Creates an Azure Cognitive Services instance."
                   },
@@ -2576,22 +2582,26 @@
                       ]
                     },
                     {
-                      "condition": "[and(parameters('enableBingSearch'), not(empty(parameters('bingSearchResourceId'))))]",
-                      "type": "Microsoft.CognitiveServices/accounts/connections",
+                      "condition": "[parameters('enableBingSearch')]",
+                      "type": "Microsoft.CognitiveServices/accounts/projects/connections",
                       "apiVersion": "2025-04-01-preview",
-                      "name": "[format('{0}/{1}', parameters('aiServiceName'), parameters('bingConnectionName'))]",
+                      "name": "[format('{0}/{1}/{2}', parameters('aiServiceName'), parameters('aiProjectName'), parameters('bingConnectionName'))]",
                       "properties": {
-                        "category": "BingGrounding",
+                        "category": "ApiKey",
                         "target": "https://api.bing.microsoft.com/",
-                        "authType": "AAD",
+                        "authType": "ApiKey",
                         "isSharedToAll": true,
+                        "credentials": {
+                          "key": "[listKeys(parameters('bingSearchResourceId'), '2020-06-10').key1]"
+                        },
                         "metadata": {
-                          "BingResourceId": "[parameters('bingSearchResourceId')]",
+                          "ApiType": "Azure",
+                          "ResourceId": "[parameters('bingSearchResourceId')]",
                           "description": "Bing Search connection for real-time web search"
                         }
                       },
                       "dependsOn": [
-                        "[resourceId('Microsoft.CognitiveServices/accounts', parameters('aiServiceName'))]"
+                        "[resourceId('Microsoft.CognitiveServices/accounts/projects', parameters('aiServiceName'), parameters('aiProjectName'))]"
                       ]
                     },
                     {
@@ -2609,6 +2619,30 @@
                       },
                       "dependsOn": [
                         "[resourceId('Microsoft.CognitiveServices/accounts', parameters('aiServiceName'))]"
+                      ]
+                    },
+                    {
+                      "type": "Microsoft.CognitiveServices/accounts/capabilityHosts",
+                      "apiVersion": "2025-04-01-preview",
+                      "name": "[format('{0}/{1}', parameters('aiServiceName'), format('{0}-caphost', parameters('aiServiceName')))]",
+                      "properties": {
+                        "capabilityHostKind": "Agents"
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.CognitiveServices/accounts', parameters('aiServiceName'))]",
+                        "[resourceId('Microsoft.CognitiveServices/accounts/projects', parameters('aiServiceName'), parameters('aiProjectName'))]"
+                      ]
+                    },
+                    {
+                      "type": "Microsoft.CognitiveServices/accounts/projects/capabilityHosts",
+                      "apiVersion": "2025-04-01-preview",
+                      "name": "[format('{0}/{1}/{2}', parameters('aiServiceName'), parameters('aiProjectName'), format('{0}-caphost', parameters('aiProjectName')))]",
+                      "properties": {
+                        "capabilityHostKind": "Agents"
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.CognitiveServices/accounts/capabilityHosts', parameters('aiServiceName'), format('{0}-caphost', parameters('aiServiceName')))]",
+                        "[resourceId('Microsoft.CognitiveServices/accounts/projects', parameters('aiServiceName'), parameters('aiProjectName'))]"
                       ]
                     },
                     {
@@ -2678,7 +2712,7 @@
                     },
                     "bingConnectionId": {
                       "type": "string",
-                      "value": "[if(and(parameters('enableBingSearch'), not(empty(parameters('bingSearchResourceId')))), resourceId('Microsoft.CognitiveServices/accounts/connections', parameters('aiServiceName'), parameters('bingConnectionName')), '')]"
+                      "value": "[if(parameters('enableBingSearch'), resourceId('Microsoft.CognitiveServices/accounts/projects/connections', parameters('aiServiceName'), parameters('aiProjectName'), parameters('bingConnectionName')), '')]"
                     }
                   }
                 }
@@ -3809,148 +3843,6 @@
       ]
     },
     {
-      "condition": "[parameters('enableBingSearch')]",
-      "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2022-09-01",
-      "name": "bing-search",
-      "resourceGroup": "[if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))]",
-      "properties": {
-        "expressionEvaluationOptions": {
-          "scope": "inner"
-        },
-        "mode": "Incremental",
-        "parameters": {
-          "name": {
-            "value": "[format('bing-{0}', variables('resourceToken'))]"
-          },
-          "tags": {
-            "value": "[variables('tags')]"
-          }
-        },
-        "template": {
-          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-          "contentVersion": "1.0.0.0",
-          "metadata": {
-            "_generator": {
-              "name": "bicep",
-              "version": "0.36.177.2456",
-              "templateHash": "2137883967745781808"
-            }
-          },
-          "parameters": {
-            "name": {
-              "type": "string",
-              "metadata": {
-                "description": "Name of the Bing Search resource"
-              }
-            },
-            "tags": {
-              "type": "object",
-              "defaultValue": {},
-              "metadata": {
-                "description": "Tags to apply to the resource"
-              }
-            }
-          },
-          "resources": [
-            {
-              "type": "Microsoft.Bing/accounts",
-              "apiVersion": "2020-06-10",
-              "name": "[parameters('name')]",
-              "location": "global",
-              "tags": "[parameters('tags')]",
-              "kind": "Bing.Grounding",
-              "sku": {
-                "name": "G1"
-              }
-            }
-          ],
-          "outputs": {
-            "endpoint": {
-              "type": "string",
-              "metadata": {
-                "description": "The endpoint for the Bing Search resource"
-              },
-              "value": "https://api.bing.microsoft.com/"
-            },
-            "name": {
-              "type": "string",
-              "metadata": {
-                "description": "The name of the Bing Search resource"
-              },
-              "value": "[parameters('name')]"
-            },
-            "resourceId": {
-              "type": "string",
-              "metadata": {
-                "description": "The resource ID of the Bing Search resource"
-              },
-              "value": "[resourceId('Microsoft.Bing/accounts', parameters('name'))]"
-            }
-          }
-        }
-      },
-      "dependsOn": [
-        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName'))))]"
-      ]
-    },
-    {
-      "condition": "[parameters('enableBingSearch')]",
-      "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2022-09-01",
-      "name": "bing-search-key",
-      "resourceGroup": "[if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))]",
-      "properties": {
-        "expressionEvaluationOptions": {
-          "scope": "inner"
-        },
-        "mode": "Incremental",
-        "parameters": {
-          "bingSearchName": "[if(parameters('enableBingSearch'), createObject('value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))), 'Microsoft.Resources/deployments', 'bing-search'), '2022-09-01').outputs.name.value), createObject('value', ''))]"
-        },
-        "template": {
-          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-          "contentVersion": "1.0.0.0",
-          "metadata": {
-            "_generator": {
-              "name": "bicep",
-              "version": "0.36.177.2456",
-              "templateHash": "15736172492182908836"
-            }
-          },
-          "parameters": {
-            "bingSearchName": {
-              "type": "string",
-              "metadata": {
-                "description": "Name of the Bing Search resource"
-              }
-            }
-          },
-          "resources": [],
-          "outputs": {
-            "apiKey": {
-              "type": "string",
-              "metadata": {
-                "description": "The primary API key for the Bing Search resource"
-              },
-              "value": "[listKeys(resourceId('Microsoft.CognitiveServices/accounts', parameters('bingSearchName')), '2023-05-01').key1]"
-            },
-            "endpoint": {
-              "type": "string",
-              "metadata": {
-                "description": "The endpoint for the Bing Search resource"
-              },
-              "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', parameters('bingSearchName')), '2023-05-01').endpoint]"
-            }
-          }
-        }
-      },
-      "dependsOn": [
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))), 'Microsoft.Resources/deployments', 'bing-search')]",
-        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName'))))]"
-      ]
-    },
-    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
       "name": "api",
@@ -3990,12 +3882,6 @@
             "value": "[parameters('aiSearchIndexName')]"
           },
           "searchServiceEndpoint": "[if(not(parameters('useSearchService')), createObject('value', ''), if(empty(parameters('azureExistingAIProjectResourceId')), createObject('value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))), 'Microsoft.Resources/deployments', 'ai'), '2022-09-01').outputs.searchServiceEndpoint.value), createObject('value', '')))]",
-          "embeddingDeploymentName": {
-            "value": "[parameters('embeddingDeploymentName')]"
-          },
-          "embeddingDeploymentDimensions": {
-            "value": "[parameters('embeddingDeploymentDimensions')]"
-          },
           "agentName": {
             "value": "[parameters('agentName')]"
           },
@@ -4008,12 +3894,7 @@
           "azureTracingGenAIContentRecordingEnabled": {
             "value": "[parameters('azureTracingGenAIContentRecordingEnabled')]"
           },
-          "projectEndpoint": "[if(not(empty(parameters('azureExistingAIProjectResourceId'))), createObject('value', variables('existingProjEndpoint')), createObject('value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))), 'Microsoft.Resources/deployments', 'ai'), '2022-09-01').outputs.aiProjectEndpoint.value))]",
-          "bingSearchEndpoint": "[if(parameters('enableBingSearch'), createObject('value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))), 'Microsoft.Resources/deployments', 'bing-search'), '2022-09-01').outputs.endpoint.value), createObject('value', ''))]",
-          "bingSearchApiKey": "[if(parameters('enableBingSearch'), createObject('value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))), 'Microsoft.Resources/deployments', 'bing-search-key'), '2022-09-01').outputs.apiKey.value), createObject('value', ''))]",
-          "bingConnectionName": {
-            "value": "[parameters('bingConnectionName')]"
-          }
+          "projectEndpoint": "[if(not(empty(parameters('azureExistingAIProjectResourceId'))), createObject('value', variables('existingProjEndpoint')), createObject('value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))), 'Microsoft.Resources/deployments', 'ai'), '2022-09-01').outputs.aiProjectEndpoint.value))]"
         },
         "template": {
           "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
@@ -4022,7 +3903,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.36.177.2456",
-              "templateHash": "9982478922369989374"
+              "templateHash": "1601877944668974430"
             }
           },
           "parameters": {
@@ -4055,13 +3936,7 @@
             "searchConnectionName": {
               "type": "string"
             },
-            "embeddingDeploymentName": {
-              "type": "string"
-            },
             "aiSearchIndexName": {
-              "type": "string"
-            },
-            "embeddingDeploymentDimensions": {
               "type": "string"
             },
             "searchServiceEndpoint": {
@@ -4119,7 +3994,7 @@
                     "value": "[parameters('location')]"
                   },
                   "tags": {
-                    "value": "[union(parameters('tags'), createObject('azd-service-name', 'api_and_frontend'))]"
+                    "value": "[union(parameters('tags'), createObject('azd-service-name', 'agent-api'))]"
                   },
                   "identityName": {
                     "value": "[parameters('identityName')]"
@@ -4156,16 +4031,8 @@
                         "value": "[parameters('agentDeploymentName')]"
                       },
                       {
-                        "name": "AZURE_AI_EMBED_DEPLOYMENT_NAME",
-                        "value": "[parameters('embeddingDeploymentName')]"
-                      },
-                      {
                         "name": "AZURE_AI_SEARCH_INDEX_NAME",
                         "value": "[parameters('aiSearchIndexName')]"
-                      },
-                      {
-                        "name": "AZURE_AI_EMBED_DIMENSIONS",
-                        "value": "[parameters('embeddingDeploymentDimensions')]"
                       },
                       {
                         "name": "RUNNING_IN_PRODUCTION",
@@ -4834,8 +4701,6 @@
       },
       "dependsOn": [
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))), 'Microsoft.Resources/deployments', 'ai')]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))), 'Microsoft.Resources/deployments', 'bing-search')]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))), 'Microsoft.Resources/deployments', 'bing-search-key')]",
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))), 'Microsoft.Resources/deployments', 'container-apps')]",
         "[subscriptionResourceId('Microsoft.Resources/resourceGroups', if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName'))))]"
       ]
@@ -5682,6 +5547,129 @@
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))), 'Microsoft.Resources/deployments', 'api')]",
         "[subscriptionResourceId('Microsoft.Resources/resourceGroups', if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName'))))]"
       ]
+    },
+    {
+      "condition": "[not(empty(parameters('azureExistingAIProjectResourceId')))]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "bing-connection",
+      "resourceGroup": "[split(parameters('azureExistingAIProjectResourceId'), '/')[4]]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "aiServiceName": {
+            "value": "[split(parameters('azureExistingAIProjectResourceId'), '/')[8]]"
+          },
+          "projectName": {
+            "value": "[split(parameters('azureExistingAIProjectResourceId'), '/')[10]]"
+          },
+          "bingSearchResourceId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))), 'Microsoft.Resources/deployments', 'bing-search'), '2022-09-01').outputs.resourceId.value]"
+          },
+          "bingConnectionName": {
+            "value": "bing-search-connection"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.36.177.2456",
+              "templateHash": "13635480221045721331"
+            },
+            "description": "Creates a Bing Search connection in an existing Azure AI Project."
+          },
+          "parameters": {
+            "aiServiceName": {
+              "type": "string",
+              "metadata": {
+                "description": "The AI Service account name."
+              }
+            },
+            "bingSearchResourceId": {
+              "type": "string",
+              "metadata": {
+                "description": "The Bing Search resource ID"
+              }
+            },
+            "bingConnectionName": {
+              "type": "string",
+              "defaultValue": "bing-search-connection",
+              "metadata": {
+                "description": "The Bing Search connection name."
+              }
+            },
+            "projectName": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "The AI Project name (extracted from resource ID)."
+              }
+            }
+          },
+          "resources": [
+            {
+              "condition": "[not(empty(parameters('projectName')))]",
+              "type": "Microsoft.CognitiveServices/accounts/projects/connections",
+              "apiVersion": "2025-04-01-preview",
+              "name": "[format('{0}/{1}/{2}', parameters('aiServiceName'), parameters('projectName'), parameters('bingConnectionName'))]",
+              "properties": {
+                "category": "ApiKey",
+                "target": "https://api.bing.microsoft.com/",
+                "authType": "ApiKey",
+                "isSharedToAll": true,
+                "credentials": {
+                  "key": "[listKeys(parameters('bingSearchResourceId'), '2020-06-10').key1]"
+                },
+                "metadata": {
+                  "ApiType": "Azure",
+                  "ResourceId": "[parameters('bingSearchResourceId')]",
+                  "description": "Bing Search connection for real-time web search"
+                }
+              }
+            },
+            {
+              "type": "Microsoft.CognitiveServices/accounts/capabilityHosts",
+              "apiVersion": "2025-04-01-preview",
+              "name": "[format('{0}/{1}', parameters('aiServiceName'), format('{0}-caphost', parameters('aiServiceName')))]",
+              "properties": {
+                "capabilityHostKind": "Agents"
+              }
+            },
+            {
+              "condition": "[not(empty(parameters('projectName')))]",
+              "type": "Microsoft.CognitiveServices/accounts/projects/capabilityHosts",
+              "apiVersion": "2025-04-01-preview",
+              "name": "[format('{0}/{1}/{2}', parameters('aiServiceName'), parameters('projectName'), format('{0}-caphost', parameters('projectName')))]",
+              "properties": {
+                "capabilityHostKind": "Agents"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts/capabilityHosts', parameters('aiServiceName'), format('{0}-caphost', parameters('aiServiceName')))]",
+                "[resourceId('Microsoft.CognitiveServices/accounts/projects/connections', parameters('aiServiceName'), parameters('projectName'), parameters('bingConnectionName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "bingConnectionId": {
+              "type": "string",
+              "value": "[if(not(empty(parameters('projectName'))), resourceId('Microsoft.CognitiveServices/accounts/projects/connections', parameters('aiServiceName'), parameters('projectName'), parameters('bingConnectionName')), '')]"
+            },
+            "bingConnectionName": {
+              "type": "string",
+              "value": "[if(not(empty(parameters('projectName'))), parameters('bingConnectionName'), '')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))), 'Microsoft.Resources/deployments', 'bing-search')]"
+      ]
     }
   ],
   "outputs": {
@@ -5705,10 +5693,6 @@
       "type": "string",
       "value": "[parameters('searchConnectionName')]"
     },
-    "AZURE_AI_EMBED_DEPLOYMENT_NAME": {
-      "type": "string",
-      "value": "[parameters('embeddingDeploymentName')]"
-    },
     "AZURE_AI_SEARCH_INDEX_NAME": {
       "type": "string",
       "value": "[parameters('aiSearchIndexName')]"
@@ -5716,10 +5700,6 @@
     "AZURE_AI_SEARCH_ENDPOINT": {
       "type": "string",
       "value": "[if(not(parameters('useSearchService')), '', if(empty(parameters('azureExistingAIProjectResourceId')), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))), 'Microsoft.Resources/deployments', 'ai'), '2022-09-01').outputs.searchServiceEndpoint.value, ''))]"
-    },
-    "AZURE_AI_EMBED_DIMENSIONS": {
-      "type": "string",
-      "value": "[parameters('embeddingDeploymentDimensions')]"
     },
     "AZURE_AI_AGENT_NAME": {
       "type": "string",
@@ -5770,10 +5750,6 @@
     "AZURE_CONTAINER_REGISTRY_ENDPOINT": {
       "type": "string",
       "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))), 'Microsoft.Resources/deployments', 'container-apps'), '2022-09-01').outputs.registryLoginServer.value]"
-    },
-    "BING_CONNECTION_ID": {
-      "type": "string",
-      "value": "[if(empty(parameters('azureExistingAIProjectResourceId')), if(parameters('enableBingSearch'), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))), 'Microsoft.Resources/deployments', 'ai'), '2022-09-01').outputs.bingConnectionId.value, ''), '')]"
     }
   }
 }
