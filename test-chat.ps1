@@ -2,7 +2,7 @@
 
 Write-Host "Testing /chat endpoint..." -ForegroundColor Cyan
 
-$endpoint = "https://ca-api-bgtcavgccmsqo.greencoast-4ed3b0ae.eastus2.azurecontainerapps.io/chat"
+$endpoint = "" #e.g. chat endpoint "https://ca-api-bgt.greencoast.eastus2.azurecontainerapps.io/chat"
 $body = @{
     message = "What is the weather in NYC today?"
 } | ConvertTo-Json

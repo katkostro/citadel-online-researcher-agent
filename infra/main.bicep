@@ -38,12 +38,6 @@ param aiProjectName string = ''
 param applicationInsightsName string = ''
 @description('The AI Services resource name. If ommited will be generated')
 param aiServicesName string = ''
-@description('The Azure Search resource name. If ommited will be generated')
-param searchServiceName string = ''
-@description('The Azure Search connection name. If ommited will use a default value')
-param searchConnectionName string = ''
-@description('The search index name')
-param aiSearchIndexName string = ''
 @description('The Azure Storage Account resource name. If ommited will be generated')
 param storageAccountName string = ''
 @description('The log analytics workspace name. If ommited will be generated')
@@ -80,8 +74,6 @@ param agentDeploymentSku string = 'GlobalStandard'
 param agentDeploymentCapacity int = 30
 
 param useApplicationInsights bool = true
-@description('Do we want to use the Azure AI Search')
-param useSearchService bool = false
 
 @description('Do we want to use the Azure Monitor tracing')
 param enableAzureMonitorTracing bool = false
@@ -136,10 +128,6 @@ var logAnalyticsWorkspaceResolvedName = !useApplicationInsights
       ? logAnalyticsWorkspaceName
       : '${abbrs.operationalInsightsWorkspaces}${resourceToken}'
 
-var resolvedSearchServiceName = !useSearchService
-  ? ''
-  : !empty(searchServiceName) ? searchServiceName : '${abbrs.searchSearchServices}${resourceToken}'
-
 // Bing Search for web search capabilities
 module bingSearch 'core/search/bing-search.bicep' = {
   name: 'bing-search'
@@ -166,7 +154,6 @@ module ai 'core/host/ai-environment.bicep' = if (empty(azureExistingAIProjectRes
     applicationInsightsName: !useApplicationInsights
       ? ''
       : !empty(applicationInsightsName) ? applicationInsightsName : '${abbrs.insightsComponents}${resourceToken}'
-    searchServiceName: resolvedSearchServiceName
     appInsightConnectionName: 'appinsights-connection'
     aoaiConnectionName: 'aoai-connection'
     enableBingSearch: true
@@ -174,10 +161,6 @@ module ai 'core/host/ai-environment.bicep' = if (empty(azureExistingAIProjectRes
     bingConnectionName: 'bing-search-connection'
   }
 }
-
-var searchServiceEndpoint = !useSearchService
-  ? ''
-  : empty(azureExistingAIProjectResourceId) ? ai!.outputs.searchServiceEndpoint : ''
 
 // If bringing an existing AI project, set up the log analytics workspace here
 module logAnalytics 'core/monitor/loganalytics.bicep' = if (!empty(azureExistingAIProjectResourceId)) {
@@ -257,9 +240,6 @@ module api 'api.bicep' = {
     azureExistingAIProjectResourceId: projectResourceId
     containerRegistryName: containerApps.outputs.registryName
     agentDeploymentName: agentDeploymentName
-    searchConnectionName: searchConnectionName
-    aiSearchIndexName: aiSearchIndexName
-    searchServiceEndpoint: searchServiceEndpoint
     agentName: agentName
     agentID: agentID
     enableAzureMonitorTracing: enableAzureMonitorTracing
@@ -320,67 +300,6 @@ module backendCognitiveServicesUser2  'core/security/role.bicep' = if (!empty(az
   }
 }
 
-
-module backendRoleSearchIndexDataContributorRG 'core/security/role.bicep' = if (useSearchService) {
-  name: 'backend-role-azure-index-data-contributor-rg'
-  scope: rg
-  params: {
-    principalType: 'ServicePrincipal'
-    principalId: api.outputs.SERVICE_API_IDENTITY_PRINCIPAL_ID
-    roleDefinitionId: '8ebe5a00-799e-43f5-93ac-243d3dce84a7'
-  }
-}
-
-module backendRoleSearchIndexDataReaderRG 'core/security/role.bicep' = if (useSearchService) {
-  name: 'backend-role-azure-index-data-reader-rg'
-  scope: rg
-  params: {
-    principalType: 'ServicePrincipal'
-    principalId: api.outputs.SERVICE_API_IDENTITY_PRINCIPAL_ID
-    roleDefinitionId: '1407120a-92aa-4202-b7e9-c0e197c71c8f'
-  }
-}
-
-module backendRoleSearchServiceContributorRG 'core/security/role.bicep' = if (useSearchService) {
-  name: 'backend-role-azure-search-service-contributor-rg'
-  scope: rg
-  params: {
-    principalType: 'ServicePrincipal'
-    principalId: api.outputs.SERVICE_API_IDENTITY_PRINCIPAL_ID
-    roleDefinitionId: '7ca78c08-252a-4471-8644-bb5ff32d4ba0'
-  }
-}
-
-module userRoleSearchIndexDataContributorRG 'core/security/role.bicep' = if (useSearchService) {
-  name: 'user-role-azure-index-data-contributor-rg'
-  scope: rg
-  params: {
-    principalType: runnerPrincipalType
-    principalId: principalId
-    roleDefinitionId: '8ebe5a00-799e-43f5-93ac-243d3dce84a7'
-  }
-}
-
-module userRoleSearchIndexDataReaderRG 'core/security/role.bicep' = if (useSearchService) {
-  name: 'user-role-azure-index-data-reader-rg'
-  scope: rg
-  params: {
-    principalType: runnerPrincipalType
-    principalId: principalId
-    roleDefinitionId: '1407120a-92aa-4202-b7e9-c0e197c71c8f'
-  }
-}
-
-module userRoleSearchServiceContributorRG 'core/security/role.bicep' = if (useSearchService) {
-  name: 'user-role-azure-search-service-contributor-rg'
-  scope: rg
-  params: {
-    principalType: runnerPrincipalType
-    principalId: principalId
-    roleDefinitionId: '7ca78c08-252a-4471-8644-bb5ff32d4ba0'
-  }
-}
-
 module backendRoleAzureAIDeveloperRG 'core/security/role.bicep' = {
   name: 'backend-role-azureai-developer-rg'
   scope: rg
@@ -409,9 +328,6 @@ output AZURE_RESOURCE_GROUP string = rg.name
 output AZURE_TENANT_ID string = tenant().tenantId
 output AZURE_EXISTING_AIPROJECT_RESOURCE_ID string = projectResourceId
 output AZURE_AI_AGENT_DEPLOYMENT_NAME string = agentDeploymentName
-output AZURE_AI_SEARCH_CONNECTION_NAME string = searchConnectionName
-output AZURE_AI_SEARCH_INDEX_NAME string = aiSearchIndexName
-output AZURE_AI_SEARCH_ENDPOINT string = searchServiceEndpoint
 output AZURE_AI_AGENT_NAME string = agentName
 output AZURE_EXISTING_AGENT_ID string = agentID
 output AZURE_EXISTING_AIPROJECT_ENDPOINT string = projectEndpoint

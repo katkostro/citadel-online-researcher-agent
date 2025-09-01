@@ -1,6 +1,6 @@
 # Citadel Online Researcher Agent
 
-An intelligent AI agent leveraging Azure AI Foundry that provides advanced research capabilities with web search, file-based knowledge retrieval, and comprehensive monitoring. This is the backend service that powers AI-driven research and conversation experiences.
+An intelligent AI agent leveraging Azure AI Foundry that provides advanced research capabilities with web search and comprehensive monitoring. This is the backend service that powers AI-driven research and conversation experiences.
 
 <div style="text-align:center;">
 
@@ -12,7 +12,7 @@ An intelligent AI agent leveraging Azure AI Foundry that provides advanced resea
 
 This solution deploys a Python FastAPI backend service with an AI agent running in Azure Container App.
 
-The agent leverages the Azure AI Agent service and utilizes Azure AI Search for knowledge retrieval from uploaded files, enabling it to generate responses with citations. The solution also includes built-in monitoring capabilities with tracing to ensure easier troubleshooting and optimized performance.
+The agent leverages the Azure AI Agent service with Bing Search integration for real-time web research, enabling it to generate responses with citations. The solution also includes built-in monitoring capabilities with tracing to ensure easier troubleshooting and optimized performance.
 
 This solution creates an Azure AI Foundry project and Azure AI services. More details about the resources can be found in the [resources](#resources) documentation. There are options to enable logging, tracing, and monitoring.
 
@@ -26,14 +26,11 @@ The app code runs in Azure Container App to process the user input and generate 
 
 ### Key Features
 
-- **Knowledge Retrieval**<br/>
-The AI agent uses file search to retrieve knowledge from uploaded files.
-
 - **Web Search & Grounding**<br/>
 The AI agent can search the web using Bing Search API to find current, up-to-date information when needed.
 
 - **Customizable AI Model Deployment**<br/>
-The solution allows users to configure and deploy AI models, such as gpt-4o-mini, with options to adjust model capacity, and knowledge retrieval methods.
+The solution allows users to configure and deploy AI models, such as gpt-4o-mini, with options to adjust model capacity and research capabilities.
 
 - **Built-in Monitoring and Tracing**<br/>
 Integrated monitoring capabilities, including Azure Monitor and Application Insights, enable tracing and logging for easier troubleshooting and performance optimization.
@@ -94,7 +91,6 @@ This guide covers:
 - Running the development server locally
 - Frontend customization and backend communication
 - Agent instructions and tools modification
-- File management and agent recreation
 - Using agent evaluation for code improvement
 
 ## Other Features
@@ -172,10 +168,9 @@ This template creates everything you need to get started with Azure AI Foundry:
 | [Azure Container Apps](https://learn.microsoft.com/azure/container-apps/) | Hosts and scales the web application with serverless containers |
 | [Azure Container Registry](https://learn.microsoft.com/azure/container-registry/) | Stores and manages container images for secure deployment |
 | [Storage Account](https://learn.microsoft.com/azure/storage/blobs/) | Provides blob storage for application data and file uploads |
-| [AI Search Service](https://learn.microsoft.com/azure/search/) | *Optional* - Enables hybrid search capabilities combining semantic and vector search |
 | [Application Insights](https://learn.microsoft.com/azure/azure-monitor/app/app-insights-overview) | *Optional* - Provides application performance monitoring, logging, and telemetry for debugging and optimization |
 | [Log Analytics Workspace](https://learn.microsoft.com/azure/azure-monitor/logs/log-analytics-workspace-overview) | *Optional* - Collects and analyzes telemetry data for monitoring and troubleshooting |
-| [Bing Search API](https://docs.microsoft.com/azure/cognitive-services/bing-web-search/) | *Optional* - Enables web search capabilities for grounding agent responses with current information |
+| [Bing Search API](https://docs.microsoft.com/azure/cognitive-services/bing-web-search/) | Enables web search capabilities for grounding agent responses with current information |
 
 ### Additional Features & Documentation
 
