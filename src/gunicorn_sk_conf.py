@@ -15,9 +15,6 @@ from azure.ai.projects import AIProjectClient
 from azure.ai.agents.models import BingGroundingTool
 from azure.identity import get_bearer_token_provider
 
-# Import the internal knowledge plugin
-from plugins.internal_knowledge_plugin import InternalKnowledgePlugin
-
 from azure.identity.aio import DefaultAzureCredential
 from dotenv import load_dotenv
 from logging_config import configure_logging
@@ -29,14 +26,13 @@ logger = configure_logging(os.getenv("APP_LOG_FILE", ""))
 # Global variables to store both SK and Azure AI components
 kernel: Optional[Kernel] = None
 chat_service: Optional[AzureChatCompletion] = None
-internal_plugin: Optional[InternalKnowledgePlugin] = None
 ai_project_client = None
 agent = None
 
 
 async def create_hybrid_system():
-    """Create hybrid system with Semantic Kernel plugins + Azure AI Projects agents"""
-    global kernel, chat_service, internal_plugin, ai_project_client, agent
+    """Create hybrid system with Azure AI Projects agents and Bing grounding"""
+    global kernel, chat_service, ai_project_client, agent
     
     try:
         # Get environment variables - using the correct names from infrastructure
@@ -65,13 +61,8 @@ async def create_hybrid_system():
         logger.info(f"sk: DEBUG - All Bing vars - ID: {bing_connection_id}, Name: {bing_connection_name}, Endpoint: {bing_search_endpoint}")
         logger.info(f"sk: DEBUG - Connection check: {bool(bing_connection_id or bing_connection_name or bing_search_endpoint)}")
         
-        # Create SK Kernel with internal plugins
+        # Create SK Kernel for potential future use
         kernel = Kernel()
-        
-        # Add internal knowledge plugin to kernel
-        internal_plugin = InternalKnowledgePlugin()
-        kernel.add_plugin(internal_plugin, plugin_name="internal_knowledge")
-        logger.info("sk: ✅ Added internal knowledge plugin to kernel")
         
         # Add Azure OpenAI chat service to kernel if available
         if azure_openai_endpoint:
@@ -202,14 +193,14 @@ async def create_hybrid_system():
                             # Create agent with Bing grounding tool
                             agent = ai_project_client.agents.create_agent(
                                 model=model_deployment,
-                                name="hybrid-outdoor-assistant",
+                                name="online-research-assistant",
                                 instructions=(
-                                    "You are a helpful outdoor gear assistant with access to real-time web information via Bing search. "
-                                    "IMPORTANT: When users ask about current events, weather, news, stock prices, or any real-time information, "
+                                    "You are a helpful research assistant with access to real-time web information via Bing search. "
+                                    "IMPORTANT: When users ask about current events, weather, news, stock prices, research topics, or any real-time information, "
                                     "you MUST use your Bing search tools to get the latest information from the internet. "
                                     "Do not say you cannot access the internet - you have Bing search capabilities. "
                                     "Always search for current information when requested and include citations/sources. "
-                                    "For product and gear questions, internal knowledge is available through separate systems."
+                                    "Provide comprehensive research with proper citations and links to sources."
                                 ),
                                 tools=bing_grounding.definitions
                             )
@@ -224,8 +215,8 @@ async def create_hybrid_system():
                         try:
                             agent = ai_project_client.agents.create_agent(
                                 model=model_deployment,
-                                name="outdoor-assistant-no-bing",
-                                instructions="You are a helpful outdoor gear assistant. Provide helpful responses based on your training knowledge."
+                                name="research-assistant-no-bing",
+                                instructions="You are a helpful research assistant. Provide helpful responses based on your training knowledge."
                             )
                             logger.info(f"sk: ✅ Created Azure AI agent without Bing: {agent.id}")
                         except Exception as e2:
@@ -236,8 +227,8 @@ async def create_hybrid_system():
                     try:
                         agent = ai_project_client.agents.create_agent(
                             model=model_deployment,
-                            name="banking-assistant-no-bing",
-                            instructions="You are a helpful banking assistant. Provide helpful responses based on your training knowledge."
+                            name="research-assistant-no-bing",
+                            instructions="You are a helpful research assistant. Provide helpful responses based on your training knowledge."
                         )
                         logger.info(f"sk: ✅ Created Azure AI agent without Bing: {agent.id}")
                     except Exception as e:
@@ -251,7 +242,6 @@ async def create_hybrid_system():
         
         logger.info("sk: ✅ Hybrid system initialized successfully")
         logger.info(f"sk: - Semantic Kernel: {'✅' if kernel else '❌'}")
-        logger.info(f"sk: - Internal Plugin: {'✅' if internal_plugin else '❌'}")  
         logger.info(f"sk: - Chat Service: {'✅' if chat_service else '❌'}")
         logger.info(f"sk: - AI Project Client: {'✅' if ai_project_client else '❌'}")
         logger.info(f"sk: - Agent with Bing: {'✅' if agent else '❌'}")
@@ -264,13 +254,13 @@ async def create_hybrid_system():
 
 
 async def initialize_resources():
-    """Initialize hybrid resources"""
+    """Initialize Azure AI Projects resources with Bing grounding"""
     global kernel
     
     try:
-        logger.info("sk: Initializing hybrid Semantic Kernel + Azure AI Projects system")
+        logger.info("sk: Initializing Azure AI Projects system with Bing grounding")
         kernel = await create_hybrid_system()
-        logger.info("sk: Successfully initialized hybrid system")
+        logger.info("sk: Successfully initialized research system")
         
     except Exception as e:
         logger.error(f"sk: Error initializing resources: {e}", exc_info=True)
