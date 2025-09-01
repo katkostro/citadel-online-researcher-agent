@@ -7,9 +7,6 @@ param identityName string
 param containerAppsEnvironmentName string
 param azureExistingAIProjectResourceId string
 param agentDeploymentName string
-param searchConnectionName string
-param aiSearchIndexName string
-param searchServiceEndpoint string
 param agentName string
 param agentID string
 param enableAzureMonitorTracing bool
@@ -46,20 +43,8 @@ var env = [
     value: agentDeploymentName
   }
   {
-    name: 'AZURE_AI_SEARCH_INDEX_NAME'
-    value: aiSearchIndexName
-  }
-  {
     name: 'RUNNING_IN_PRODUCTION'
     value: 'true'
-  }
-  {
-    name: 'AZURE_AI_SEARCH_CONNECTION_NAME'
-    value: searchConnectionName
-  }
-  {
-    name: 'AZURE_AI_SEARCH_ENDPOINT'
-    value: searchServiceEndpoint
   }
   {
     name: 'ENABLE_AZURE_MONITOR_TRACING'

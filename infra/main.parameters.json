@@ -47,9 +47,6 @@
     "useApplicationInsights": {
       "value": "${USE_APPLICATION_INSIGHTS=true}"
     },
-    "useSearchService": {
-      "value": "${USE_AZURE_AI_SEARCH_SERVICE=false}"
-    },
     "agentName": {
       "value": "${AZURE_AI_AGENT_NAME=agent-template-assistant}"
     },
@@ -103,9 +100,6 @@
     },
     "azureExistingAIProjectResourceId": {
       "value": "${AZURE_EXISTING_AIPROJECT_RESOURCE_ID}"
-    },
-    "aiSearchIndexName": {
-      "value": "${AZURE_AI_SEARCH_INDEX_NAME=index_sample}"
     },
     "enableAzureMonitorTracing": {
       "value": "${ENABLE_AZURE_MONITOR_TRACING=false}"
