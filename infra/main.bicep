@@ -79,31 +79,6 @@ param agentDeploymentSku string = 'GlobalStandard'
 // https://learn.microsoft.com/en-us/azure/ai-services/openai/quotas-limits
 param agentDeploymentCapacity int = 30
 
-// Embedding model
-@description('Format of the embedding model to deploy')
-@allowed(['Microsoft', 'OpenAI'])
-param embedModelFormat string = 'OpenAI'
-
-@description('Name of the embedding model to deploy')
-param embedModelName string = 'text-embedding-3-small'
-@description('Name of the embedding model deployment')
-param embeddingDeploymentName string = 'text-embedding-3-small'
-@description('Embedding model dimensionality')
-param embeddingDeploymentDimensions string = '100'
-
-@description('Version of the embedding model to deploy')
-// See version availability in this table:
-// https://learn.microsoft.com/azure/ai-services/openai/concepts/models#embeddings-models
-param embedModelVersion string = '1'
-
-@description('Sku of the embeddings model deployment')
-param embedDeploymentSku string = 'Standard'
-
-@description('Capacity of the embedding deployment')
-// You can increase this, but capacity is limited per model/region, so you will get errors if you go over
-// https://learn.microsoft.com/azure/ai-services/openai/quotas-limits
-param embedDeploymentCapacity int = 30
-
 param useApplicationInsights bool = true
 @description('Do we want to use the Azure AI Search')
 param useSearchService bool = false
@@ -144,24 +119,8 @@ var aiChatModel = [
     }
   }
 ]
-var aiEmbeddingModel = [ 
-  {
-    name: embeddingDeploymentName
-    model: {
-      format: embedModelFormat
-      name: embedModelName
-      version: embedModelVersion
-    }
-    sku: {
-      name: embedDeploymentSku
-      capacity: embedDeploymentCapacity
-    }
-  }
-]
 
-var aiDeployments = concat(
-  aiChatModel,
-  useSearchService ? aiEmbeddingModel : [])
+var aiDeployments = aiChatModel
 
 
 // Organize resources in a resource group
@@ -301,8 +260,6 @@ module api 'api.bicep' = {
     searchConnectionName: searchConnectionName
     aiSearchIndexName: aiSearchIndexName
     searchServiceEndpoint: searchServiceEndpoint
-    embeddingDeploymentName: embeddingDeploymentName
-    embeddingDeploymentDimensions: embeddingDeploymentDimensions
     agentName: agentName
     agentID: agentID
     enableAzureMonitorTracing: enableAzureMonitorTracing
@@ -453,10 +410,8 @@ output AZURE_TENANT_ID string = tenant().tenantId
 output AZURE_EXISTING_AIPROJECT_RESOURCE_ID string = projectResourceId
 output AZURE_AI_AGENT_DEPLOYMENT_NAME string = agentDeploymentName
 output AZURE_AI_SEARCH_CONNECTION_NAME string = searchConnectionName
-output AZURE_AI_EMBED_DEPLOYMENT_NAME string = embeddingDeploymentName
 output AZURE_AI_SEARCH_INDEX_NAME string = aiSearchIndexName
 output AZURE_AI_SEARCH_ENDPOINT string = searchServiceEndpoint
-output AZURE_AI_EMBED_DIMENSIONS string = embeddingDeploymentDimensions
 output AZURE_AI_AGENT_NAME string = agentName
 output AZURE_EXISTING_AGENT_ID string = agentID
 output AZURE_EXISTING_AIPROJECT_ENDPOINT string = projectEndpoint

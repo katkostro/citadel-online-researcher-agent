@@ -8,9 +8,7 @@ param containerAppsEnvironmentName string
 param azureExistingAIProjectResourceId string
 param agentDeploymentName string
 param searchConnectionName string
-param embeddingDeploymentName string
 param aiSearchIndexName string
-param embeddingDeploymentDimensions string
 param searchServiceEndpoint string
 param agentName string
 param agentID string
@@ -48,16 +46,8 @@ var env = [
     value: agentDeploymentName
   }
   {
-    name: 'AZURE_AI_EMBED_DEPLOYMENT_NAME'
-    value: embeddingDeploymentName
-  }
-  {
     name: 'AZURE_AI_SEARCH_INDEX_NAME'
     value: aiSearchIndexName
-  }
-  {
-    name: 'AZURE_AI_EMBED_DIMENSIONS'
-    value: embeddingDeploymentDimensions
   }
   {
     name: 'RUNNING_IN_PRODUCTION'
