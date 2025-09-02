@@ -26,6 +26,9 @@ The app code runs in Azure Container App to process the user input and generate 
 
 ### Key Features
 
+- **Interactive API Documentation**<br/>
+Comprehensive OpenAPI/Swagger documentation with interactive testing interface accessible at `/docs`. Explore all endpoints, test API calls, and view detailed schemas with example requests and responses.
+
 - **Web Search & Grounding**<br/>
 The AI agent can search the web using Bing Search API to find current, up-to-date information when needed.
 
@@ -46,18 +49,37 @@ Facilitates the creation of an AI Red Teaming Agent that can run batch automated
 
 <br/>
 
+## API Documentation
+
+This service provides comprehensive OpenAPI/Swagger documentation for easy integration and testing:
+
+### Interactive Documentation
+- **Swagger UI**: `/docs` - Interactive interface to explore and test all endpoints
+- **ReDoc**: `/redoc` - Alternative clean documentation interface  
+- **OpenAPI Spec**: `/openapi.json` - Raw specification for integration tools
+
+### Key Endpoints
+- `POST /search` - Web search with AI analysis and Unicode citations
+- `POST /chat` - Interactive streaming chat with conversation memory
+- `GET /agent` - Agent configuration and status information
+- `GET /health` - Comprehensive service health monitoring
+- `GET /` - Service information and navigation
+
+### Documentation Features
+- 🔍 **Interactive Testing**: Try API calls directly from the browser
+- 📋 **Detailed Schemas**: Request/response models with examples
+- 🏷️ **Organized by Tags**: Endpoints grouped by functionality (search, chat, agent, health)
+- ⚡ **Real Examples**: Realistic request/response samples
+- 🔒 **Authentication Info**: Security requirements and setup
+
+For detailed API documentation, see [Swagger Documentation Guide](./docs/swagger_documentation.md).
+
 ## Frontend Integration
 
 This backend agent is designed to work with chat applications that can consume its REST API endpoints. 
 
 For a ready-to-use React TypeScript frontend, see the companion repository:
 - **[Citadel Chat App](../chat-app)** - Modern React chat interface with real-time streaming
-
-The agent provides the following API endpoints:
-- `GET /agent` - Get agent configuration and metadata
-- `GET /chat/history` - Retrieve conversation history
-- `POST /chat` - Send messages and receive streaming responses
-- `GET /health` - Health check endpoint
 
 Here is a screenshot showing a sample chatting web application powered by this agent:
 

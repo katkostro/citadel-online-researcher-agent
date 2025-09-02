@@ -1,5 +1,5 @@
 # Test the new /search endpoint
-$BaseUrl = "" # e.g. your /search endpoint "https://ca-api-bgt.greencoast.eastus2.azurecontainerapps.io"
+$BaseUrl = "https://ca-api-bgtcavgccmsqo.greencoast-4ed3b0ae.eastus2.azurecontainerapps.io" # your deployed /search endpoint
 
 Write-Host "Testing /search endpoint..." -ForegroundColor Green
 

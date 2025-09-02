@@ -37,10 +37,77 @@ def serialize_sse_event(data: Dict) -> str:
 class Message(BaseModel):
     message: str
     session_state: dict = {}
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "message": "What's the weather like in Miami today?",
+                "session_state": {}
+            }
+        }
 
 class ChatResponse(BaseModel):
     message: str
     annotations: list = []
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "message": "The weather in Miami today is sunny with a temperature of 78°F...",
+                "annotations": ["weather", "miami", "current"]
+            }
+        }
+
+class SearchRequest(BaseModel):
+    query: str
+    max_results: int = 10
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "query": "upcoming events in Miami this weekend",
+                "max_results": 5
+            }
+        }
+
+class SearchResponse(BaseModel):
+    results: list
+    query: str
+    total_results: int
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "results": [
+                    {
+                        "title": "Miami Art Festival",
+                        "url": "https://example.com/miami-art-festival",
+                        "snippet": "Join us for the annual Miami Art Festival featuring local artists..."
+                    }
+                ],
+                "query": "upcoming events in Miami this weekend",
+                "total_results": 15
+            }
+        }
+
+class HealthResponse(BaseModel):
+    status: str
+    version: str
+    timestamp: str
+    services: dict
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "status": "healthy",
+                "version": "1.0.0", 
+                "timestamp": "2024-01-15T10:30:00Z",
+                "services": {
+                    "azure_ai": "connected",
+                    "bing_search": "connected"
+                }
+            }
+        }
 
 enable_trace = False
 logger = configure_logging(os.getenv("APP_LOG_FILE", ""))
@@ -76,8 +143,72 @@ async def lifespan(app: FastAPI):
     # Cleanup on shutdown
     logger.info("FastAPI shutdown: Cleaning up resources")
 
-# Create FastAPI app
-app = FastAPI(lifespan=lifespan)
+# Create FastAPI app with comprehensive OpenAPI documentation
+app = FastAPI(
+    title="AI Online Researcher Agent",
+    description="""
+    **AI-powered research assistant that provides real-time information through web search.**
+    
+    This service combines Azure AI Projects with Bing Search to deliver:
+    - Real-time web research capabilities
+    - Event discovery and information gathering
+    - Weather and current information queries
+    - Interactive chat-based assistance
+    - RESTful search endpoints
+    
+    ## Key Features
+    - 🔍 **Web Search**: Real-time search using Bing grounding
+    - 💬 **Interactive Chat**: Conversational AI assistant
+    - 🌐 **RESTful API**: Standard HTTP endpoints for integration
+    - 📊 **Health Monitoring**: Built-in health check endpoints
+    - 🔒 **Secure**: Azure-hosted with proper authentication
+    
+    ## Authentication
+    This service uses Azure authentication. Ensure proper credentials are configured.
+    
+    ## Rate Limits
+    Please be mindful of API usage to ensure fair access for all users.
+    """,
+    version="1.0.0",
+    lifespan=lifespan,
+    contact={
+        "name": "AI Research Team",
+        "url": "https://github.com/your-org/citadel-online-researcher-agent",
+        "email": "support@your-domain.com"
+    },
+    license_info={
+        "name": "MIT",
+        "url": "https://opensource.org/licenses/MIT",
+    },
+    servers=[
+        {
+            "url": "/",
+            "description": "Current server"
+        }
+    ],
+    tags_metadata=[
+        {
+            "name": "search",
+            "description": "Web search operations using Bing grounding"
+        },
+        {
+            "name": "chat",
+            "description": "Interactive conversational AI endpoints"
+        },
+        {
+            "name": "agent",
+            "description": "AI agent operations and interactions"  
+        },
+        {
+            "name": "health",
+            "description": "Service health and monitoring endpoints"
+        },
+        {
+            "name": "system",
+            "description": "System configuration and utilities"
+        }
+    ]
+)
 
 # Add CORS middleware to allow frontend to communicate with backend
 from fastapi.middleware.cors import CORSMiddleware
@@ -102,7 +233,49 @@ async def favicon():
     # Return empty response to prevent 404 errors in browser
     return Response(content="", media_type="image/x-icon")
 
-@app.get("/health")
+@app.get("/health",
+         tags=["health"],
+         summary="Service health check",
+         description="""
+         **Check the health status of the AI research service.**
+         
+         This endpoint provides comprehensive health information about the service and its dependencies:
+         - Overall service status
+         - Azure AI Projects connection status  
+         - Bing grounding availability
+         - Agent initialization status
+         - Framework information
+         
+         **Use Cases:**
+         - Monitoring and alerting
+         - Load balancer health checks
+         - Service dependency verification
+         - Troubleshooting connectivity issues
+         
+         **Status Indicators:**
+         - `healthy`: All systems operational
+         - `degraded`: Partial functionality available
+         - `unhealthy`: Service unavailable
+         """,
+         response_model=dict,
+         responses={
+             200: {
+                 "description": "Service health status",
+                 "content": {
+                     "application/json": {
+                         "example": {
+                             "status": "healthy",
+                             "framework": "azure_ai_projects_with_bing_grounding",
+                             "agent_id": "asst_abc123def456",
+                             "ai_project_client_enabled": True,
+                             "bing_grounding_enabled": True,
+                             "timestamp": "2024-01-15T10:30:00Z",
+                             "version": "1.0.0"
+                         }
+                     }
+                 }
+             }
+         })
 async def health():
     """Health check endpoint"""
     global agent, ai_project_client, kernel, chat_service
@@ -117,18 +290,131 @@ async def health():
         "chat_service_enabled": chat_service is not None
     })
 
-@app.get("/")
+@app.get("/",
+         tags=["system"], 
+         summary="Service welcome page",
+         description="""
+         **Welcome to the AI Online Researcher Agent API.**
+         
+         This is the main landing page for the AI research service. From here you can:
+         - Access the interactive API documentation at `/docs`
+         - View the OpenAPI specification at `/openapi.json`  
+         - Test endpoints using the built-in Swagger UI
+         - Review service capabilities and features
+         
+         **Quick Links:**
+         - 📚 **API Documentation**: `/docs` (Swagger UI)
+         - 📋 **OpenAPI Spec**: `/openapi.json` 
+         - 🏥 **Health Check**: `/health`
+         - 🔍 **Search Endpoint**: `/search`
+         - 💬 **Chat Endpoint**: `/chat`
+         - 🤖 **Agent Info**: `/agent`
+         """,
+         responses={
+             200: {
+                 "description": "Service information and navigation",
+                 "content": {
+                     "application/json": {
+                         "example": {
+                             "service": "AI Online Researcher Agent",
+                             "version": "1.0.0",
+                             "description": "AI-powered research assistant with real-time web search",
+                             "documentation": "/docs",
+                             "openapi_spec": "/openapi.json",
+                             "endpoints": {
+                                 "search": "/search",
+                                 "chat": "/chat", 
+                                 "agent": "/agent",
+                                 "health": "/health"
+                             }
+                         }
+                     }
+                 }
+             }
+         })
 async def index(request: Request):
-    """Serve the main page"""
-    from fastapi.templating import Jinja2Templates
-    templates = Jinja2Templates(directory="api/templates")
-    return templates.TemplateResponse(
-        "index.html", 
-        {"request": request}
-    )
+    """Serve API information and navigation"""
+    return JSONResponse(content={
+        "service": "AI Online Researcher Agent",
+        "version": "1.0.0",
+        "description": "AI-powered research assistant with real-time web search capabilities",
+        "framework": "FastAPI with Azure AI Projects and Bing grounding",
+        "documentation": {
+            "swagger_ui": f"{request.url}docs",
+            "openapi_spec": f"{request.url}openapi.json",
+            "redoc": f"{request.url}redoc"
+        },
+        "endpoints": {
+            "search": f"{request.url}search",
+            "chat": f"{request.url}chat", 
+            "agent": f"{request.url}agent",
+            "health": f"{request.url}health"
+        },
+        "features": [
+            "Real-time web search via Bing grounding",
+            "Interactive streaming chat interface", 
+            "Unicode citation formatting",
+            "Session-based conversation memory",
+            "RESTful API with OpenAPI documentation"
+        ],
+        "status": "operational"
+    })
 
 
-@app.get("/agent")
+@app.get("/agent",
+         tags=["agent"],
+         summary="Get AI agent information",
+         description="""
+         **Retrieve detailed information about the AI research agent.**
+         
+         This endpoint provides comprehensive details about the configured AI agent including:
+         - Agent ID and identification details
+         - Model configuration and deployment information
+         - Instructions and behavioral parameters
+         - Available tools and capabilities
+         - Current operational status
+         
+         **Information Returned:**
+         - **Agent Identity**: Unique ID, name, and type
+         - **Model Details**: Deployment name, version, and capabilities  
+         - **Configuration**: Instructions, tools, and behavioral settings
+         - **Status**: Current operational state and availability
+         
+         **Use Cases:**
+         - Debugging agent configuration
+         - Monitoring agent deployment status
+         - Integration planning and capability discovery
+         - Troubleshooting behavioral issues
+         """,
+         response_model=dict,
+         responses={
+             200: {
+                 "description": "Agent information successfully retrieved",
+                 "content": {
+                     "application/json": {
+                         "example": {
+                             "id": "asst_abc123def456",
+                             "name": "Bing Grounding Search Assistant", 
+                             "model": "gpt-4o-mini",
+                             "instructions": "Search assistant with Bing grounding capabilities for current information",
+                             "type": "azure_ai_agent_with_bing_grounding",
+                             "tools": ["bing_search", "web_grounding"],
+                             "status": "active"
+                         }
+                     }
+                 }
+             },
+             404: {
+                 "description": "Agent not found or not initialized",
+                 "content": {
+                     "application/json": {
+                         "example": {
+                             "detail": "Agent not found"
+                         }
+                     }
+                 }
+             }
+         })
 async def get_chat_agent(request: Request, _ = auth_dependency):
     """Get agent information"""
     global agent
@@ -293,7 +579,52 @@ What can I help you search for today?"""
         yield serialize_sse_event({'type': "stream_end"})
 
 
-@app.post("/chat")
+@app.post("/chat",
+          tags=["chat"],
+          summary="Interactive streaming chat with AI agent",
+          description="""
+          **Real-time conversational AI with streaming responses.**
+          
+          This endpoint provides an interactive chat experience with an AI agent that has access to:
+          - Real-time web search capabilities via Bing
+          - Current information and live data
+          - Conversational memory within sessions
+          - Streaming response for better user experience
+          
+          **Key Features:**
+          - 🚀 **Streaming**: Real-time response streaming using Server-Sent Events
+          - 🧠 **Memory**: Maintains conversation context using thread_id
+          - 🔍 **Web Access**: Can search and cite current information
+          - 💬 **Natural**: Conversational interface with follow-up questions
+          
+          **Session Management:**
+          - Pass thread_id in session_state to maintain conversation context
+          - Each thread maintains its own conversation history
+          - Threads persist for the duration of the session
+          
+          **Response Format:**
+          Streaming response using text/plain content type with real-time updates.
+          """,
+          responses={
+              200: {
+                  "description": "Streaming chat response", 
+                  "content": {
+                      "text/plain": {
+                          "example": "I'd be happy to help you find information about Miami events this weekend! Let me search for current events happening in Miami...\n\nBased on my search, here are some exciting events in Miami this weekend:\n\n**Art Basel Miami Beach** 【1:0†Official Art Basel Site】\n- This Saturday-Sunday at Miami Beach Convention Center\n- International contemporary art fair with galleries from around the world\n\nWould you like me to find more specific information about any of these events?"
+                      }
+                  }
+              },
+              500: {
+                  "description": "Internal server error during chat processing",
+                  "content": {
+                      "application/json": {
+                          "example": {
+                              "detail": "An error occurred while processing your request"
+                          }
+                      }
+                  }
+              }
+          })
 async def chat_stream(request: Message, _ = auth_dependency):
     """Stream chat responses from the Azure AI Projects agent with Bing grounding"""
     
@@ -420,7 +751,72 @@ def format_bing_grounding_response(content, annotations=None):
         }
     }
 
-@app.post("/search")
+@app.post("/search", 
+          tags=["search"],
+          summary="Perform web search with AI analysis",
+          description="""
+          **Search for information using Bing grounding and AI analysis.**
+          
+          This endpoint performs real-time web searches and provides intelligent analysis of the results.
+          Perfect for finding current information, events, news, and factual data.
+          
+          **Key Features:**
+          - Real-time web search via Bing
+          - AI-powered result analysis and summarization  
+          - Unicode citation formatting 【n:m†source】
+          - Structured JSON response format
+          
+          **Use Cases:**
+          - Finding current events and news
+          - Weather and location information
+          - Business hours and contact details
+          - Research and fact-checking
+          
+          **Response Format:**
+          Returns structured data with AI analysis and properly formatted citations.
+          """,
+          response_model=dict,
+          responses={
+              200: {
+                  "description": "Successful search with AI analysis",
+                  "content": {
+                      "application/json": {
+                          "example": {
+                              "response": {
+                                  "type": "text",
+                                  "text": {
+                                      "value": "Based on current web search, here are upcoming events in Miami this weekend:\n\n**Art Basel Miami Beach** 【1:0†Official Art Basel Site】\n- When: December 6-10, 2024\n- Location: Miami Beach Convention Center\n- What: International contemporary art fair\n\n**Miami Food & Wine Festival** 【2:1†Miami Events Guide】\n- When: This Saturday-Sunday\n- Location: Various venues in South Beach\n- What: Culinary experiences and wine tastings",
+                                      "annotations": [
+                                          {
+                                              "type": "citation",
+                                              "text": "Official Art Basel Site",
+                                              "start_index": 45,
+                                              "end_index": 48
+                                          }
+                                      ]
+                                  }
+                              }
+                          }
+                      }
+                  }
+              },
+              503: {
+                  "description": "Search service temporarily unavailable",
+                  "content": {
+                      "application/json": {
+                          "example": {
+                              "response": {
+                                  "type": "text", 
+                                  "text": {
+                                      "value": "Search service not available",
+                                      "annotations": []
+                                  }
+                              }
+                          }
+                      }
+                  }
+              }
+          })
 async def search_endpoint(request: Message, _ = auth_dependency):
     """
     Search endpoint that returns Bing grounding responses in standardized JSON format.
